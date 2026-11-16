@@ -1,5 +1,5 @@
 
-name: Ninjagram Android APK
+name: Ninjagram Android Build
 
 on:
   workflow_dispatch:
@@ -7,13 +7,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -21,36 +18,32 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android licenses
+        run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
 
       - name: Install Android SDK and NDK
         run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
           yes | sdkmanager --licenses
-          sdkmanager \
-            "platforms;android-36" \
+          sdkmanager "platforms;android-36" \
             "build-tools;36.0.0" \
             "ndk;27.2.12479018" \
             "cmake;3.22.1"
 
-      - name: Check project
-        run: |
-          echo "Checking Gradle wrapper"
-          ls -l gradlew
-          echo "Checking source modules"
-          ls -la TMessagesProj
-
       - name: Build Android APK
         run: |
           chmod +x gradlew
-          ./gradlew :TMessagesProj_App:assembleAfatDebug \
-            --no-daemon \
-            --stacktrace
+          ./gradlew :TMessagesProj_App:assembleAfatRelease --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Ninjagram-test-APK
-          path: TMessagesProj_App/build/outputs/apk/**/*.apk
+          name: Ninjagram-APK
+          path: TMessagesProj_App/build/outputs/apk/afat/release/*.apk
           if-no-files-found: error
-          retention-days: 7
